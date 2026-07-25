@@ -1,6 +1,6 @@
 """
-🛡️ Cyber Shield SIEM - Launcher Script
-========================================
+Cyber Shield SIEM - Launcher Script
+====================================
 Run this script to start the complete SIEM system.
 
 Usage:
@@ -9,7 +9,6 @@ Usage:
 
 import os
 import sys
-import subprocess
 
 # Ensure we're in the project root
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -19,14 +18,13 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 if __name__ == "__main__":
     print("""
-╔══════════════════════════════════════════════╗
-║        🛡️  CYBER SHIELD SIEM  🛡️            ║
-║   Security Information & Event Management    ║
-║        Launching all components...           ║
-╚══════════════════════════════════════════════╝
++=================================================+
+|            CYBER SHIELD SIEM                     |
+|   Security Information & Event Management        |
+|              Launching...                        |
++=================================================+
     """)
     
     # Import and run main
     from main import main
     main()
-

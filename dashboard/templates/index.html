@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Cyber Shield SIEM - Dashboard</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <h1>🛡️ Cyber Shield SIEM</h1>
+                <p class="subtitle">Security Information & Event Management Dashboard</p>
+            </div>
+            <div class="connection-status" id="connectionStatus">
+                <span class="dot"></span> Connecting...
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card total-logs">
+                <div class="stat-icon">📝</div>
+                <div class="stat-info">
+                    <h3>Total Logs</h3>
+                    <p id="totalLogs">0</p>
+                </div>
+            </div>
+            <div class="stat-card total-alerts">
+                <div class="stat-icon">🚨</div>
+                <div class="stat-info">
+                    <h3>Total Alerts</h3>
+                    <p id="totalAlerts">0</p>
+                </div>
+            </div>
+            <div class="stat-card active-alerts">
+                <div class="stat-icon">🔴</div>
+                <div class="stat-info">
+                    <h3>Active Alerts</h3>
+                    <p id="activeAlerts">0</p>
+                </div>
+            </div>
+            <div class="stat-card status-ok">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <h3>System Status</h3>
+                    <p id="systemStatus">Monitoring</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>📊 Log Activity (Last 20)</h3>
+                <canvas id="logChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>🚨 Alert Severity Distribution</h3>
+                <canvas id="alertChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Live Feed -->
+        <div class="content-grid">
+            <div class="feed-card">
+                <div class="card-header">
+                    <h3>📋 Recent Logs</h3>
+                    <span class="badge live">LIVE</span>
+                </div>
+                <div class="feed-container" id="logFeed">
+                    <div class="loading">Waiting for logs...</div>
+                </div>
+            </div>
+            <div class="feed-card">
+                <div class="card-header">
+                    <h3>🚨 Recent Alerts</h3>
+                    <span class="badge alert-badge">ACTIVE</span>
+                </div>
+                <div class="feed-container" id="alertFeed">
+                    <div class="loading">No alerts detected</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>🛡️ Cyber Shield SIEM &copy; 2025 - Security Information & Event Management System</p>
+        </footer>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal-overlay" onclick="closeDetailModal(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Detail View</h2>
+                <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="loading">Loading details...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Connect to WebSocket
+        const socket = io();
+
+        // Chart instances
+        let logChart, alertChart;
+
+        // Initialize charts
+        function initCharts() {
+            // Log Activity Chart
+            const logCtx = document.getElementById('logChart').getContext('2d');
+            logChart = new Chart(logCtx, {
+                type: 'bar',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        label: 'Events',
+                        data: Array(20).fill(0),
+                        backgroundColor: 'rgba(0, 255, 136, 0.6)',
+                        borderColor: '#00ff88',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    animation: { duration: 300 },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Alert Severity Chart
+            const alertCtx = document.getElementById('alertChart').getContext('2d');
+            alertChart = new Chart(alertCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#ff0033', '#ff6600', '#ffcc00', '#00ccff'],
+                        borderColor: '#1a1a2e',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ccc' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Add log entry to feed
+        function addLogToFeed(log) {
+            const feed = document.getElementById('logFeed');
+            const severityColors = {
+                'INFO': '#00ff88',
+                'WARNING': '#ffcc00',
+                'CRITICAL': '#ff0033'
+            };
+            const color = severityColors[log.severity] || '#ccc';
+            
+            const entry = document.createElement('div');
+            entry.className = 'feed-entry log-entry';
+            entry.style.cursor = 'pointer';
+            entry.title = 'Click to view full details';
+            entry.innerHTML = `
+                <span class="timestamp">${log.timestamp.split('T')[1] || log.timestamp}</span>
+                <span class="event-type" style="color: ${color}">${log.event_type}</span>
+                <span class="severity-badge" style="background: ${color}">${log.severity}</span>
+                <span class="source">${log.source_ip}</span>
+                <span class="message">${log.message}</span>
+            `;
+            entry.onclick = () => openLogDetail(log.id);
+            
+            feed.insertBefore(entry, feed.firstChild);
+            
+            // Keep only last 50 entries
+            while (feed.children.length > 50) {
+                feed.removeChild(feed.lastChild);
+            }
+            
+            // Remove loading message
+            const loading = feed.querySelector('.loading');
+            if (loading) loading.remove();
+        }
+
+        // Add alert to feed
+        function addAlertToFeed(alert) {
+            const feed = document.getElementById('alertFeed');
+            const severityIcons = {
+                'CRITICAL': '🔴',
+                'HIGH': '🟠',
+                'MEDIUM': '🟡',
+                'LOW': '🔵'
+            };
+            const icon = severityIcons[alert.severity] || '⚪';
+            
+            const entry = document.createElement('div');
+            entry.className = 'feed-entry alert-entry';
+            entry.style.cursor = 'pointer';
+            entry.title = 'Click to view full details';
+            entry.innerHTML = `
+                <span class="alert-icon">${icon}</span>
+                <span class="alert-type">${alert.alert_type}</span>
+                <span class="severity-badge ${alert.severity.toLowerCase()}">${alert.severity}</span>
+                <span class="source">${alert.source_ip}</span>
+                <span class="message">${alert.description}</span>
+            `;
+            entry.onclick = () => openAlertDetail(alert.id);
+            
+            feed.insertBefore(entry, feed.firstChild);
+            
+            // Keep only last 30 entries
+            while (feed.children.length > 30) {
+                feed.removeChild(feed.lastChild);
+            }
+            
+            // Remove loading message
+            const loading = feed.querySelector('.loading');
+            if (loading) loading.remove();
+        }
+
+        // Update charts
+        function updateCharts(stats) {
+            // Update log chart
+            if (logChart && stats.recent_logs) {
+                const data = logChart.data;
+                const labels = stats.recent_logs.map(l => 
+                    l.event_type.substring(0, 4)
+                );
+                
+                data.labels = labels.concat(Array(Math.max(0, 20 - labels.length)).fill(''));
+                
+                // Count event types
+                const typeCount = {};
+                stats.recent_logs.forEach(l => {
+                    typeCount[l.event_type] = (typeCount[l.event_type] || 0) + 1;
+                });
+                
+                const values = Object.values(typeCount);
+                data.datasets[0].data = values.concat(Array(Math.max(0, 20 - values.length)).fill(0));
+                
+                logChart.update();
+            }
+            
+            // Update alert chart
+            if (alertChart && stats.recent_alerts) {
+                const severityCount = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+                stats.recent_alerts.forEach(a => {
+                    if (severityCount.hasOwnProperty(a.severity)) {
+                        severityCount[a.severity]++;
+                    }
+                });
+                
+                alertChart.data.datasets[0].data = [
+                    severityCount.CRITICAL,
+                    severityCount.HIGH,
+                    severityCount.MEDIUM,
+                    severityCount.LOW
+                ];
+                
+                alertChart.update();
+            }
+        }
+
+        // Update stats UI
+        function updateStatsUI(stats) {
+            document.getElementById('totalLogs').textContent = stats.log_count || 0;
+            document.getElementById('totalAlerts').textContent = stats.alert_count || 0;
+            document.getElementById('activeAlerts').textContent = (stats.recent_alerts || []).length || 0;
+            document.getElementById('systemStatus').textContent = stats.alert_count > 0 ? '⚠️ Threats Detected' : '✅ Secure';
+        }
+
+// Socket event handlers
+        socket.on('connect', () => {
+            document.getElementById('connectionStatus').className = 'connection-status connected';
+            document.querySelector('.dot').classList.add('connected');
+            document.getElementById('connectionStatus').innerHTML = '<span class="dot connected"></span> Connected';
+            // Charts are initialized by loadInitialData() — do NOT reset them here
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connectionStatus').className = 'connection-status';
+            document.querySelector('.dot').classList.remove('connected');
+            document.getElementById('connectionStatus').innerHTML = '<span class="dot"></span> Reconnecting...';
+        });
+
+        socket.on('new_logs', (data) => {
+            if (data.logs) {
+                data.logs.forEach(log => addLogToFeed(log));
+            }
+        });
+
+        socket.on('new_alerts', (data) => {
+            if (data.alerts) {
+                data.alerts.forEach(alert => addAlertToFeed(alert));
+            }
+        });
+
+        socket.on('stats_update', (data) => {
+            updateStatsUI(data);
+            updateCharts(data);
+        });
+
+        socket.on('connected', (data) => {
+            console.log(data.message);
+        });
+
+        // =============================================
+        // DETAIL MODAL FUNCTIONS
+        // =============================================
+        
+        // Open log detail modal
+        async function openLogDetail(logId) {
+            const modal = document.getElementById('detailModal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            
+            title.textContent = `📝 Log #${logId} - Full Details`;
+            body.innerHTML = '<div class="loading">Loading log details...</div>';
+            modal.style.display = 'flex';
+            
+            try {
+                const response = await fetch(`/api/log/${logId}`);
+                const log = await response.json();
+                
+                if (log.error) {
+                    body.innerHTML = `<div class="loading error">${log.error}</div>`;
+                    return;
+                }
+                
+                const severityColors = {
+                    'INFO': '#00ff88',
+                    'WARNING': '#ffcc00',
+                    'CRITICAL': '#ff0033'
+                };
+                const color = severityColors[log.severity] || '#ccc';
+                
+                body.innerHTML = `
+                    <div class="detail-section">
+                        <div class="detail-row">
+                            <span class="detail-label">Log ID</span>
+                            <span class="detail-value">#${log.id}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Timestamp</span>
+                            <span class="detail-value">${log.timestamp}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Source IP</span>
+                            <span class="detail-value ip-address">${log.source_ip}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Event Type</span>
+                            <span class="detail-value"><span class="event-badge">${log.event_type}</span></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Severity</span>
+                            <span class="detail-value"><span class="severity-badge" style="background: ${color}">${log.severity}</span></span>
+                        </div>
+                        <div class="detail-row message-row">
+                            <span class="detail-label">Message</span>
+                            <span class="detail-value detail-message">${log.message}</span>
+                        </div>
+                        <div class="detail-row message-row">
+                            <span class="detail-label">Raw Log</span>
+                            <span class="detail-value detail-message raw-log">${log.raw_log || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Parsed At</span>
+                            <span class="detail-value">${log.parsed_at || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                body.innerHTML = `<div class="loading error">Error loading log details</div>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Open alert detail modal
+        async function openAlertDetail(alertId) {
+            const modal = document.getElementById('detailModal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            
+            title.textContent = `🚨 Alert #${alertId} - Full Details`;
+            body.innerHTML = '<div class="loading">Loading alert details...</div>';
+            modal.style.display = 'flex';
+            
+            try {
+                const response = await fetch(`/api/alert/${alertId}`);
+                const alert = await response.json();
+                
+                if (alert.error) {
+                    body.innerHTML = `<div class="loading error">${alert.error}</div>`;
+                    return;
+                }
+                
+                const severityColors = {
+                    'CRITICAL': '#ff0033',
+                    'HIGH': '#ff6600',
+                    'MEDIUM': '#ffcc00',
+                    'LOW': '#00ccff'
+                };
+                const severityIcons = {
+                    'CRITICAL': '🔴',
+                    'HIGH': '🟠',
+                    'MEDIUM': '🟡',
+                    'LOW': '🔵'
+                };
+                const color = severityColors[alert.severity] || '#ccc';
+                const icon = severityIcons[alert.severity] || '⚪';
+                
+                body.innerHTML = `
+                    <div class="detail-section">
+                        <div class="detail-row">
+                            <span class="detail-label">Alert ID</span>
+                            <span class="detail-value">#${alert.id}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Timestamp</span>
+                            <span class="detail-value">${alert.timestamp}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Alert Type</span>
+                            <span class="detail-value"><strong>${icon} ${alert.alert_type}</strong></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Source IP</span>
+                            <span class="detail-value ip-address">${alert.source_ip}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Severity</span>
+                            <span class="detail-value"><span class="severity-badge" style="background: ${color}">${alert.severity}</span></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value"><span class="status-badge ${alert.status?.toLowerCase() || 'new'}">${alert.status || 'NEW'}</span></span>
+                        </div>
+                        <div class="detail-row message-row">
+                            <span class="detail-label">Description</span>
+                            <span class="detail-value detail-message">${alert.description}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Created At</span>
+                            <span class="detail-value">${alert.created_at || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                body.innerHTML = `<div class="loading error">Error loading alert details</div>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Close modal
+        function closeDetailModal(event) {
+            const modal = document.getElementById('detailModal');
+            // Only close if clicking overlay background or close button
+            if (!event || event.target === modal || event.target.classList.contains('modal-close')) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Load initial data from API and continue with WebSocket updates
+        async function loadInitialData() {
+            try {
+                // Fetch stats
+                const statsRes = await fetch('/api/stats');
+                const stats = await statsRes.json();
+                
+                // Fetch recent logs
+                const logsRes = await fetch('/api/logs?limit=10');
+                const logs = await logsRes.json();
+                
+                // Fetch recent alerts
+                const alertsRes = await fetch('/api/alerts?limit=5');
+                const alerts = await alertsRes.json();
+                
+                // Update UI with initial data
+                document.getElementById('totalLogs').textContent = stats.log_count || 0;
+                document.getElementById('totalAlerts').textContent = stats.alert_count || 0;
+                document.getElementById('activeAlerts').textContent = alerts.length || 0;
+                document.getElementById('systemStatus').textContent = stats.alert_count > 0 ? '⚠️ Threats Detected' : '✅ Secure';
+                
+                // Add logs to feed
+                if (logs && logs.length > 0) {
+                    const feed = document.getElementById('logFeed');
+                    const loading = feed.querySelector('.loading');
+                    if (loading) loading.remove();
+                    
+                    logs.reverse().forEach(log => addLogToFeed(log));
+                }
+                
+                // Add alerts to feed
+                if (alerts && alerts.length > 0) {
+                    const feed = document.getElementById('alertFeed');
+                    const loading = feed.querySelector('.loading');
+                    if (loading) loading.remove();
+                    
+                    alerts.reverse().forEach(alert => addAlertToFeed(alert));
+                }
+                
+                // Initialize charts with data
+                initCharts();
+                if (logs.length > 0 && logChart) {
+                    const typeCount = {};
+                    logs.forEach(l => { typeCount[l.event_type] = (typeCount[l.event_type] || 0) + 1; });
+                    const labels = Object.keys(typeCount).map(k => k.substring(0, 4));
+                    const values = Object.values(typeCount);
+                    logChart.data.labels = labels.concat(Array(Math.max(0, 20 - labels.length)).fill(''));
+                    logChart.data.datasets[0].data = values.concat(Array(Math.max(0, 20 - values.length)).fill(0));
+                    logChart.update();
+                }
+                if (alerts.length > 0 && alertChart) {
+                    const severityCount = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+                    alerts.forEach(a => { if (severityCount.hasOwnProperty(a.severity)) severityCount[a.severity]++; });
+                    alertChart.data.datasets[0].data = [severityCount.CRITICAL, severityCount.HIGH, severityCount.MEDIUM, severityCount.LOW];
+                    alertChart.update();
+                }
+                
+                console.log('Initial data loaded:', stats);
+            } catch (error) {
+                console.log('Initial load via API failed, waiting for WebSocket...', error);
+                // Fallback: init empty charts
+                setTimeout(() => {
+                    if (!logChart) initCharts();
+                }, 3000);
+            }
+        }
+
+        // Handle case where socket connection takes time
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Cyber Shield SIEM - Alerts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🚨 Alert History</h1>
+                <a href="/" class="back-link">← Back to Dashboard</a>
+            </div>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="stats-grid">
+            <div class="stat-card critical">
+                <h3>🔴 Critical</h3>
+                <p id="criticalCount">0</p>
+            </div>
+            <div class="stat-card high">
+                <h3>🟠 High</h3>
+                <p id="highCount">0</p>
+            </div>
+            <div class="stat-card medium">
+                <h3>🟡 Medium</h3>
+                <p id="mediumCount">0</p>
+            </div>
+            <div class="stat-card low">
+                <h3>🔵 Low</h3>
+                <p id="lowCount">0</p>
+            </div>
+
+        <!-- Alert Table -->
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Timestamp</th>
+                        <th>Alert Type</th>
+                        <th>Source IP</th>
+                        <th>Severity</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="alertTableBody">
+                    <tr>
+                        <td colspan="6" class="loading">Loading alerts...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    <script>
+        async function refreshAlerts() {
+            try {
+                const response = await fetch('/api/alerts?limit=100');
+                const alerts = await response.json();
+                
+                const tbody = document.getElementById('alertTableBody');
+                tbody.innerHTML = '';
+                
+                if (alerts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="loading">No alerts found. System is secure ✅</td></tr>';
+                    return;
+                }
+                
+                // Count by severity
+                let critical = 0, high = 0, medium = 0, low = 0;
+                
+                alerts.forEach(alert => {
+                    const severityColors = {
+                        'CRITICAL': '#ff0033',
+                        'HIGH': '#ff6600',
+                        'MEDIUM': '#ffcc00',
+                        'LOW': '#00ccff'
+                    };
+                    const color = severityColors[alert.severity] || '#ccc';
+                    
+                    if (alert.severity === 'CRITICAL') critical++;
+                    else if (alert.severity === 'HIGH') high++;
+                    else if (alert.severity === 'MEDIUM') medium++;
+                    else low++;
+                    
+                    const row = document.createElement('tr');
+                    row.className = `alert-row ${alert.severity.toLowerCase()}`;
+                    row.innerHTML = `
+                        <td>${alert.id}</td>
+                        <td>${alert.timestamp}</td>
+                        <td><strong>${alert.alert_type}</strong></td>
+                        <td>${alert.source_ip}</td>
+                        <td><span class="severity-badge" style="background: ${color}">${alert.severity}</span></td>
+                        <td class="msg-cell">${alert.description}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                // Update summary
+                document.getElementById('criticalCount').textContent = critical;
+                document.getElementById('highCount').textContent = high;
+                document.getElementById('mediumCount').textContent = medium;
+                document.getElementById('lowCount').textContent = low;
+                
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+                document.getElementById('alertTableBody').innerHTML = 
+                    '<tr><td colspan="6" class="loading error">Error loading alerts</td></tr>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', refreshAlerts);
+        setInterval(refreshAlerts, 10000);
+    </script>
+</body>
+</html>

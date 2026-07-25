@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Cyber Shield SIEM - Logs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>📋 Log Explorer</h1>
+                <a href="/" class="back-link">← Back to Dashboard</a>
+            </div>
+        </header>
+
+        <!-- Filters -->
+        <div class="filters">
+            <input type="text" id="searchIP" placeholder="Search by IP address..." class="filter-input">
+            <select id="filterType" class="filter-select">
+                <option value="">All Event Types</option>
+                <option value="SSH">SSH</option>
+                <option value="HTTP">HTTP</option>
+                <option value="FIREWALL">Firewall</option>
+                <option value="SYSTEM">System</option>
+            </select>
+            <select id="filterSeverity" class="filter-select">
+                <option value="">All Severities</option>
+                <option value="INFO">Info</option>
+                <option value="WARNING">Warning</option>
+                <option value="CRITICAL">Critical</option>
+            </select>
+            <button onclick="refreshLogs()" class="btn-refresh">🔄 Refresh</button>
+        </div>
+
+        <!-- Log Table -->
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Timestamp</th>
+                        <th>Source IP</th>
+                        <th>Event Type</th>
+                        <th>Severity</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody">
+                    <tr>
+                        <td colspan="6" class="loading">Loading logs...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    <script>
+        async function refreshLogs() {
+            const ip = document.getElementById('searchIP').value;
+            const type = document.getElementById('filterType').value;
+            const severity = document.getElementById('filterSeverity').value;
+            
+            let url = '/api/logs?limit=100';
+            if (ip) url += `&ip=${ip}`;
+            if (type) url += `&type=${type}`;
+            
+            try {
+                const response = await fetch(url);
+                const logs = await response.json();
+                
+                const tbody = document.getElementById('logTableBody');
+                tbody.innerHTML = '';
+                
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="loading">No logs found</td></tr>';
+                    return;
+                }
+                
+                logs.forEach(log => {
+                    const severityColor = {
+                        'INFO': '#00ff88',
+                        'WARNING': '#ffcc00',
+                        'CRITICAL': '#ff0033'
+                    }[log.severity] || '#ccc';
+                    
+                    if (severity && log.severity !== severity) return;
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.id}</td>
+                        <td>${log.timestamp}</td>
+                        <td>${log.source_ip}</td>
+                        <td><span class="event-badge">${log.event_type}</span></td>
+                        <td><span class="severity-dot" style="background: ${severityColor}"></span> ${log.severity}</td>
+                        <td class="msg-cell">${log.message}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+                document.getElementById('logTableBody').innerHTML = 
+                    '<tr><td colspan="6" class="loading error">Error loading logs</td></tr>';
+            }
+        }
+
+        // Auto refresh every 10 seconds
+        document.addEventListener('DOMContentLoaded', refreshLogs);
+        setInterval(refreshLogs, 10000);
+    </script>
+</body>
+</html>

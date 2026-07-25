@@ -26,7 +26,6 @@ ALERT_EMAIL_TO = os.getenv('ALERT_EMAIL_TO', '')
 
 # Web server
 SECRET_KEY = os.getenv('SECRET_KEY', 'cyber-shield-secret-key-change-in-production')
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = False  # MUST be False to prevent Flask reloader from killing background threads
 HOST = '0.0.0.0'
 PORT = 5000
-

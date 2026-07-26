@@ -21,69 +21,182 @@
             </div>
         </header>
 
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-            <div class="stat-card total-logs">
-                <div class="stat-icon">📝</div>
-                <div class="stat-info">
-                    <h3>Total Logs</h3>
-                    <p id="totalLogs">0</p>
+        <!-- Tab Navigation -->
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">
+                📊 Dashboard
+            </button>
+            <button class="tab-btn" data-tab="logs" onclick="switchTab('logs')">
+                📋 Log Explorer
+            </button>
+            <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">
+                🚨 Alerts
+            </button>
+        </div>
+
+        <!-- ========== TAB 1: DASHBOARD ========== -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card total-logs">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-info">
+                        <h3>Total Logs</h3>
+                        <p id="totalLogs">0</p>
+                    </div>
+                </div>
+                <div class="stat-card total-alerts">
+                    <div class="stat-icon">🚨</div>
+                    <div class="stat-info">
+                        <h3>Total Alerts</h3>
+                        <p id="totalAlerts">0</p>
+                    </div>
+                </div>
+                <div class="stat-card active-alerts">
+                    <div class="stat-icon">🔴</div>
+                    <div class="stat-info">
+                        <h3>Active Alerts</h3>
+                        <p id="activeAlerts">0</p>
+                    </div>
+                </div>
+                <div class="stat-card status-ok">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <h3>System Status</h3>
+                        <p id="systemStatus">Monitoring</p>
+                    </div>
                 </div>
             </div>
-            <div class="stat-card total-alerts">
-                <div class="stat-icon">🚨</div>
-                <div class="stat-info">
-                    <h3>Total Alerts</h3>
-                    <p id="totalAlerts">0</p>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>📊 Log Activity (Last 20)</h3>
+                    <canvas id="logChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>🚨 Alert Severity Distribution</h3>
+                    <canvas id="alertChart"></canvas>
                 </div>
             </div>
-            <div class="stat-card active-alerts">
-                <div class="stat-icon">🔴</div>
-                <div class="stat-info">
-                    <h3>Active Alerts</h3>
-                    <p id="activeAlerts">0</p>
+
+            <!-- Live Feed -->
+            <div class="content-grid">
+                <div class="feed-card">
+                    <div class="card-header">
+                        <h3>📋 Recent Logs</h3>
+                        <span class="badge live">LIVE</span>
+                    </div>
+                    <div class="feed-container" id="logFeed">
+                        <div class="loading">Waiting for logs...</div>
+                    </div>
                 </div>
-            </div>
-            <div class="stat-card status-ok">
-                <div class="stat-icon">✅</div>
-                <div class="stat-info">
-                    <h3>System Status</h3>
-                    <p id="systemStatus">Monitoring</p>
+                <div class="feed-card">
+                    <div class="card-header">
+                        <h3>🚨 Recent Alerts</h3>
+                        <span class="badge alert-badge">ACTIVE</span>
+                    </div>
+                    <div class="feed-container" id="alertFeed">
+                        <div class="loading">No alerts detected</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Charts -->
-        <div class="charts-grid">
-            <div class="chart-card">
-                <h3>📊 Log Activity (Last 20)</h3>
-                <canvas id="logChart"></canvas>
+        <!-- ========== TAB 2: LOG EXPLORER ========== -->
+        <div id="tab-logs" class="tab-content">
+            <div class="section-header">
+                <h2>📋 Log Explorer</h2>
+                <p class="section-subtitle">Browse, search, and filter all security logs</p>
             </div>
-            <div class="chart-card">
-                <h3>🚨 Alert Severity Distribution</h3>
-                <canvas id="alertChart"></canvas>
+
+            <!-- Filters -->
+            <div class="filters">
+                <input type="text" id="searchIP" placeholder="Search by IP address..." class="filter-input">
+                <select id="filterType" class="filter-select">
+                    <option value="">All Event Types</option>
+                    <option value="SSH">SSH</option>
+                    <option value="HTTP">HTTP</option>
+                    <option value="FIREWALL">Firewall</option>
+                    <option value="SYSTEM">System</option>
+                </select>
+                <select id="filterSeverity" class="filter-select">
+                    <option value="">All Severities</option>
+                    <option value="INFO">Info</option>
+                    <option value="WARNING">Warning</option>
+                    <option value="CRITICAL">Critical</option>
+                </select>
+                <button onclick="refreshLogs()" class="btn-refresh">🔄 Refresh</button>
+            </div>
+
+            <!-- Log Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Source IP</th>
+                            <th>Event Type</th>
+                            <th>Severity</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Loading logs...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Live Feed -->
-        <div class="content-grid">
-            <div class="feed-card">
-                <div class="card-header">
-                    <h3>📋 Recent Logs</h3>
-                    <span class="badge live">LIVE</span>
+        <!-- ========== TAB 3: ALERTS ========== -->
+        <div id="tab-alerts" class="tab-content">
+            <div class="section-header">
+                <h2>🚨 Alert History</h2>
+                <p class="section-subtitle">View and monitor all security alerts</p>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="stats-grid">
+                <div class="stat-card critical">
+                    <h3>🔴 Critical</h3>
+                    <p id="criticalCount">0</p>
                 </div>
-                <div class="feed-container" id="logFeed">
-                    <div class="loading">Waiting for logs...</div>
+                <div class="stat-card high">
+                    <h3>🟠 High</h3>
+                    <p id="highCount">0</p>
+                </div>
+                <div class="stat-card medium">
+                    <h3>🟡 Medium</h3>
+                    <p id="mediumCount">0</p>
+                </div>
+                <div class="stat-card low">
+                    <h3>🔵 Low</h3>
+                    <p id="lowCount">0</p>
                 </div>
             </div>
-            <div class="feed-card">
-                <div class="card-header">
-                    <h3>🚨 Recent Alerts</h3>
-                    <span class="badge alert-badge">ACTIVE</span>
-                </div>
-                <div class="feed-container" id="alertFeed">
-                    <div class="loading">No alerts detected</div>
-                </div>
+
+            <!-- Alert Table -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Alert Type</th>
+                            <th>Source IP</th>
+                            <th>Severity</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alertTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Loading alerts...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -107,13 +220,40 @@
     </div>
 
     <script>
-        // Connect to WebSocket
+        // =============================================
+        // TAB SWITCHING
+        // =============================================
+        let currentTab = 'dashboard';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
+            });
+            
+            // Show/hide tab content
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.toggle('active', el.id === 'tab-' + tab);
+            });
+            
+            // Refresh data when switching tabs
+            if (tab === 'logs') refreshLogs();
+            if (tab === 'alerts') refreshAlerts();
+        }
+
+        // =============================================
+        // SOCKET CONNECTION
+        // =============================================
         const socket = io();
 
         // Chart instances
         let logChart, alertChart;
 
-        // Initialize charts
+        // =============================================
+        // CHARTS INIT
+        // =============================================
         function initCharts() {
             // Log Activity Chart
             const logCtx = document.getElementById('logChart').getContext('2d');
@@ -164,7 +304,9 @@
             });
         }
 
-        // Add log entry to feed
+        // =============================================
+        // LOG FEED
+        // =============================================
         function addLogToFeed(log) {
             const feed = document.getElementById('logFeed');
             const severityColors = {
@@ -189,17 +331,17 @@
             
             feed.insertBefore(entry, feed.firstChild);
             
-            // Keep only last 50 entries
             while (feed.children.length > 50) {
                 feed.removeChild(feed.lastChild);
             }
             
-            // Remove loading message
             const loading = feed.querySelector('.loading');
             if (loading) loading.remove();
         }
 
-        // Add alert to feed
+        // =============================================
+        // ALERT FEED
+        // =============================================
         function addAlertToFeed(alert) {
             const feed = document.getElementById('alertFeed');
             const severityIcons = {
@@ -225,19 +367,18 @@
             
             feed.insertBefore(entry, feed.firstChild);
             
-            // Keep only last 30 entries
             while (feed.children.length > 30) {
                 feed.removeChild(feed.lastChild);
             }
             
-            // Remove loading message
             const loading = feed.querySelector('.loading');
             if (loading) loading.remove();
         }
 
-        // Update charts
+        // =============================================
+        // UPDATE CHARTS
+        // =============================================
         function updateCharts(stats) {
-            // Update log chart
             if (logChart && stats.recent_logs) {
                 const data = logChart.data;
                 const labels = stats.recent_logs.map(l => 
@@ -246,7 +387,6 @@
                 
                 data.labels = labels.concat(Array(Math.max(0, 20 - labels.length)).fill(''));
                 
-                // Count event types
                 const typeCount = {};
                 stats.recent_logs.forEach(l => {
                     typeCount[l.event_type] = (typeCount[l.event_type] || 0) + 1;
@@ -258,7 +398,6 @@
                 logChart.update();
             }
             
-            // Update alert chart
             if (alertChart && stats.recent_alerts) {
                 const severityCount = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
                 stats.recent_alerts.forEach(a => {
@@ -278,7 +417,9 @@
             }
         }
 
-        // Update stats UI
+        // =============================================
+        // UPDATE STATS UI
+        // =============================================
         function updateStatsUI(stats) {
             document.getElementById('totalLogs').textContent = stats.log_count || 0;
             document.getElementById('totalAlerts').textContent = stats.alert_count || 0;
@@ -286,12 +427,13 @@
             document.getElementById('systemStatus').textContent = stats.alert_count > 0 ? '⚠️ Threats Detected' : '✅ Secure';
         }
 
-// Socket event handlers
+        // =============================================
+        // SOCKET EVENT HANDLERS
+        // =============================================
         socket.on('connect', () => {
             document.getElementById('connectionStatus').className = 'connection-status connected';
             document.querySelector('.dot').classList.add('connected');
             document.getElementById('connectionStatus').innerHTML = '<span class="dot connected"></span> Connected';
-            // Charts are initialized by loadInitialData() — do NOT reset them here
         });
 
         socket.on('disconnect', () => {
@@ -322,10 +464,8 @@
         });
 
         // =============================================
-        // DETAIL MODAL FUNCTIONS
+        // DETAIL MODAL
         // =============================================
-        
-        // Open log detail modal
         async function openLogDetail(logId) {
             const modal = document.getElementById('detailModal');
             const title = document.getElementById('modalTitle');
@@ -393,7 +533,6 @@
             }
         }
         
-        // Open alert detail modal
         async function openAlertDetail(alertId) {
             const modal = document.getElementById('detailModal');
             const title = document.getElementById('modalTitle');
@@ -469,56 +608,157 @@
             }
         }
         
-        // Close modal
         function closeDetailModal(event) {
             const modal = document.getElementById('detailModal');
-            // Only close if clicking overlay background or close button
             if (!event || event.target === modal || event.target.classList.contains('modal-close')) {
                 modal.style.display = 'none';
             }
         }
 
-        // Load initial data from API and continue with WebSocket updates
+        // =============================================
+        // LOG EXPLORER (Tab 2)
+        // =============================================
+        async function refreshLogs() {
+            const ip = document.getElementById('searchIP').value;
+            const type = document.getElementById('filterType').value;
+            const severity = document.getElementById('filterSeverity').value;
+            
+            let url = '/api/logs?limit=100';
+            if (ip) url += `&ip=${ip}`;
+            if (type) url += `&type=${type}`;
+            
+            try {
+                const response = await fetch(url);
+                const logs = await response.json();
+                
+                const tbody = document.getElementById('logTableBody');
+                tbody.innerHTML = '';
+                
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="loading">No logs found</td></tr>';
+                    return;
+                }
+                
+                logs.forEach(log => {
+                    const severityColor = {
+                        'INFO': '#00ff88',
+                        'WARNING': '#ffcc00',
+                        'CRITICAL': '#ff0033'
+                    }[log.severity] || '#ccc';
+                    
+                    if (severity && log.severity !== severity) return;
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.id}</td>
+                        <td>${log.timestamp}</td>
+                        <td>${log.source_ip}</td>
+                        <td><span class="event-badge">${log.event_type}</span></td>
+                        <td><span class="severity-dot" style="background: ${severityColor}"></span> ${log.severity}</td>
+                        <td class="msg-cell">${log.message}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+                document.getElementById('logTableBody').innerHTML = 
+                    '<tr><td colspan="6" class="loading error">Error loading logs</td></tr>';
+            }
+        }
+
+        // =============================================
+        // ALERTS (Tab 3)
+        // =============================================
+        async function refreshAlerts() {
+            try {
+                const response = await fetch('/api/alerts?limit=100');
+                const alerts = await response.json();
+                
+                const tbody = document.getElementById('alertTableBody');
+                tbody.innerHTML = '';
+                
+                if (alerts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="loading">No alerts found. System is secure ✅</td></tr>';
+                    return;
+                }
+                
+                let critical = 0, high = 0, medium = 0, low = 0;
+                
+                alerts.forEach(alert => {
+                    const severityColors = {
+                        'CRITICAL': '#ff0033',
+                        'HIGH': '#ff6600',
+                        'MEDIUM': '#ffcc00',
+                        'LOW': '#00ccff'
+                    };
+                    const color = severityColors[alert.severity] || '#ccc';
+                    
+                    if (alert.severity === 'CRITICAL') critical++;
+                    else if (alert.severity === 'HIGH') high++;
+                    else if (alert.severity === 'MEDIUM') medium++;
+                    else low++;
+                    
+                    const row = document.createElement('tr');
+                    row.className = `alert-row ${alert.severity.toLowerCase()}`;
+                    row.innerHTML = `
+                        <td>${alert.id}</td>
+                        <td>${alert.timestamp}</td>
+                        <td><strong>${alert.alert_type}</strong></td>
+                        <td>${alert.source_ip}</td>
+                        <td><span class="severity-badge" style="background: ${color}">${alert.severity}</span></td>
+                        <td class="msg-cell">${alert.description}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                document.getElementById('criticalCount').textContent = critical;
+                document.getElementById('highCount').textContent = high;
+                document.getElementById('mediumCount').textContent = medium;
+                document.getElementById('lowCount').textContent = low;
+                
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+                document.getElementById('alertTableBody').innerHTML = 
+                    '<tr><td colspan="6" class="loading error">Error loading alerts</td></tr>';
+            }
+        }
+
+        // =============================================
+        // INIT
+        // =============================================
         async function loadInitialData() {
             try {
-                // Fetch stats
                 const statsRes = await fetch('/api/stats');
                 const stats = await statsRes.json();
                 
-                // Fetch recent logs
                 const logsRes = await fetch('/api/logs?limit=10');
                 const logs = await logsRes.json();
                 
-                // Fetch recent alerts
                 const alertsRes = await fetch('/api/alerts?limit=5');
                 const alerts = await alertsRes.json();
                 
-                // Update UI with initial data
                 document.getElementById('totalLogs').textContent = stats.log_count || 0;
                 document.getElementById('totalAlerts').textContent = stats.alert_count || 0;
                 document.getElementById('activeAlerts').textContent = alerts.length || 0;
                 document.getElementById('systemStatus').textContent = stats.alert_count > 0 ? '⚠️ Threats Detected' : '✅ Secure';
                 
-                // Add logs to feed
                 if (logs && logs.length > 0) {
                     const feed = document.getElementById('logFeed');
                     const loading = feed.querySelector('.loading');
                     if (loading) loading.remove();
-                    
                     logs.reverse().forEach(log => addLogToFeed(log));
                 }
                 
-                // Add alerts to feed
                 if (alerts && alerts.length > 0) {
                     const feed = document.getElementById('alertFeed');
                     const loading = feed.querySelector('.loading');
                     if (loading) loading.remove();
-                    
                     alerts.reverse().forEach(alert => addAlertToFeed(alert));
                 }
                 
-                // Initialize charts with data
                 initCharts();
+                
                 if (logs.length > 0 && logChart) {
                     const typeCount = {};
                     logs.forEach(l => { typeCount[l.event_type] = (typeCount[l.event_type] || 0) + 1; });
@@ -528,6 +768,7 @@
                     logChart.data.datasets[0].data = values.concat(Array(Math.max(0, 20 - values.length)).fill(0));
                     logChart.update();
                 }
+                
                 if (alerts.length > 0 && alertChart) {
                     const severityCount = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
                     alerts.forEach(a => { if (severityCount.hasOwnProperty(a.severity)) severityCount[a.severity]++; });
@@ -538,16 +779,18 @@
                 console.log('Initial data loaded:', stats);
             } catch (error) {
                 console.log('Initial load via API failed, waiting for WebSocket...', error);
-                // Fallback: init empty charts
                 setTimeout(() => {
                     if (!logChart) initCharts();
                 }, 3000);
             }
         }
 
-        // Handle case where socket connection takes time
         document.addEventListener('DOMContentLoaded', () => {
             loadInitialData();
+            // Auto-refresh logs every 10s
+            setInterval(refreshLogs, 10000);
+            // Auto-refresh alerts every 10s
+            setInterval(refreshAlerts, 10000);
         });
     </script>
 </body>

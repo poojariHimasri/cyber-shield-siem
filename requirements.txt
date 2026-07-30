@@ -1,8 +1,16 @@
+# Cyber Shield SIEM - Production Dependencies
+# ============================================
+
+# Web Framework
 Flask==3.0.0
 Flask-SocketIO==5.3.6
+
+# Web Server (Production)
+gunicorn==23.0.0
 eventlet==0.33.3
+
+# Utilities
 python-dotenv==1.0.0
 pandas==2.1.4
 schedule==1.2.0
-gunicorn==23.0.0
 

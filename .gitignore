@@ -1,3 +1,4 @@
+
 # Python
 __pycache__/
 *.py[cod]
@@ -8,7 +9,8 @@ venv/
 
 # Database
 *.db
-data/
+# Keep data/ directory but not db files inside it
+data/*.db
 
 # Logs
 logs/
@@ -27,3 +29,5 @@ Thumbs.db
 # Project specific
 check_dashboard.py
 test_import.py
+# Deployment - keep render.yaml as it's needed
+# Keep Procfile, runtime.txt, wsgi.py as they're needed for deployment

@@ -1,13 +1,24 @@
-# Cyber Shield SIEM - Fix Plan
+# Cyber Shield SIEM - Deployment Progress ✅
 
-## Completed:
+## ✅ 1. Create Deployment Files
+- [x] Create `wsgi.py` - WSGI entry point for gunicorn
+- [x] Create `Procfile` - Render process declaration
+- [x] Create `runtime.txt` - Python version pinning
+- [x] Create `.env.example` - Environment variables template
 
-- [x] 1. Created `logs/` directory for simulated log storage
-- [x] 2. Created `data/` directory for SQLite database
-- [x] 3. Fixed `dashboard/templates/index.html` - fixed broken HTML (missing `</div>` tags) & truncated JavaScript (completed the full script)
-- [x] 4. Created `run.py` - launcher script (referenced in README)
-- [x] 5. Created `install.bat` - one-click setup script
-- [x] 6. Created `run.bat` - one-click run script
-- [x] 7. Installed all dependencies (Flask, Flask-SocketIO, eventlet, python-dotenv, pandas, schedule)
-- [x] 8. Tested application - all components start successfully
+## ✅ 2. Fix Application Code
+- [x] Modify `dashboard/app.py` - Auto-start background thread properly
+- [x] Fix SQLite database path for production (absolute path via config)
+- [x] Fix SocketIO async_mode='eventlet' for production compatibility
+- [x] Fix config.py - Add docstring, BASE_DIR, env var overrides, auto-create dirs
+
+## ✅ 3. Update Config & Requirements
+- [x] Update `requirements.txt` - Organized with comments
+- [x] Update `render.yaml` - Point to wsgi:application, add DEBUG var
+- [x] Update `.gitignore` - Exclude db files but keep dir structure
+
+## ⬜ 4. Verify & Test
+- [x] Test locally with gunicorn
+- [x] Verify background threads work
+- [x] Push to GitHub and deploy on Render
 

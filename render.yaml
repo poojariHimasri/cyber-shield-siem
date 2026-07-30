@@ -6,10 +6,12 @@ services:
     plan: free
     region: oregon
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -k eventlet -w 1 dashboard.app:app --bind 0.0.0.0:$PORT
+    startCommand: gunicorn -k eventlet -w 1 wsgi:application --bind 0.0.0.0:$PORT --access-logfile - --error-logfile - --log-level info
     envVars:
       - key: SECRET_KEY
         value: cyber-shield-production-secret-key
+      - key: DEBUG
+        value: "False"
       - key: PORT
         value: 10000
 

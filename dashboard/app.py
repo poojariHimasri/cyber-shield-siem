@@ -1,5 +1,9 @@
 """
 Web Dashboard - Flask server with real-time log and alert display
+=================================================================
+This module works with both:
+1. Development: `python dashboard/app.py` (Flask dev server)
+2. Production: `gunicorn -k eventlet wsgi:application` (via wsgi.py)
 """
 import sys
 import os
@@ -14,11 +18,17 @@ from app.models import Database
 from app.collector import LogCollector
 from app.correlation_engine import CorrelationEngine
 from app.alert_manager import AlertManager
-from config import SECRET_KEY, DEBUG, HOST, PORT
+from config import SECRET_KEY, DEBUG, HOST, PORT, DATABASE_PATH, LOG_DIR
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = SECRET_KEY
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Ensure data directories exist
+os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# SocketIO with eventlet async_mode for production compatibility
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Initialize components
 db = Database()
@@ -28,15 +38,20 @@ alert_manager = AlertManager(db)
 
 # Background thread control
 running = True
+_cycle_count = 0
 
 def background_log_collection():
-    """Run log collection in background"""
-    global running
-    cycle = 0
+    """Run log collection in background (works with both dev and gunicorn)"""
+    global running, _cycle_count
+    _cycle_count = 0
+    
+    # Brief delay to ensure server is fully initialized
+    time.sleep(2)
+    
     while running:
-        cycle += 1
+        _cycle_count += 1
         try:
-            attacker_mode = (cycle % 5 == 0)
+            attacker_mode = (_cycle_count % 5 == 0)
             num_logs = 8 if attacker_mode else 4
             logs = collector.collect_logs(num_logs, attacker_mode)
             
@@ -44,7 +59,7 @@ def background_log_collection():
             socketio.emit('new_logs', {'logs': logs, 'count': len(logs)})
             
             # Run correlation analysis every 2 cycles
-            if cycle % 2 == 0:
+            if _cycle_count % 2 == 0:
                 alerts = correlation_engine.run_analysis()
                 if alerts:
                     alert_manager.process_alerts(alerts)
@@ -173,7 +188,7 @@ def start_background_thread():
     return thread
 
 def run_dashboard():
-    """Start the dashboard server"""
+    """Start the dashboard server (for local development)"""
     global running
     running = True
     
@@ -193,4 +208,7 @@ def run_dashboard():
     socketio.run(app, host=HOST, port=PORT, debug=DEBUG, allow_unsafe_werkzeug=True)
 
 if __name__ == '__main__':
+    # For local development only
+    # For production use: gunicorn -k eventlet -w 1 wsgi:application
+    print("[DEV] Starting Cyber Shield SIEM in development mode...")
     run_dashboard()
